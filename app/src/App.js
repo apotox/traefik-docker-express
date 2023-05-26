@@ -7,7 +7,7 @@ function App() {
   const [version,setVersion] = useState(null)
 
   const fetchVersion=async ()=>{
-    const res = await fetch(process.env.REACT_APP_PROXY_API)
+    const res = await fetch(`${process.env.REACT_APP_PROXY_API}/version`)
     const data = await res.json()
     return data?.version
   }
