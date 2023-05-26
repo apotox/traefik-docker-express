@@ -1,0 +1,50 @@
+version: '3'
+services:
+  traefik:
+    image: "traefik:v2.10"
+    container_name: "traefik"
+    command:
+      - "--log.level=DEBUG"
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--api.dashboard=true"
+    ports:
+      - "80:80"
+      - "8080:8080"
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+  backend:
+    depends_on:
+      - traefik
+    build: 
+      context: ./backend
+    environment:
+      PORT: 3080
+    ports:
+      - 3080:3080
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.backend.rule=Host(`api.localhost`)"
+      - "traefik.http.middlewares.hide-server-name.headers.customresponseheaders.X-Powered-By=fakeServer"
+      - "traefik.http.middlewares.api-strip.stripprefix.PathPrefix=/api"
+      - "traefik.http.routers.backend.middlewares=hide-server-name,api-strip"
+  web-frontend:
+    depends_on:
+      - backend
+      - traefik
+    build: 
+      context: ./app
+      args:
+        REACT_APP_PROXY_API: http://api.localhost
+    environment:
+      PORT: 3081
+    ports:
+      - 3081:3081
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.frontend.rule=Host(`app.localhost`)"
+      - "traefik.http.routers.frontend.entrypoints=web"
+      - "traefik.http.middlewares.hide-server-name.headers.customresponseheaders.server=fakeServer"
+      - "traefik.http.routers.frontend.middlewares=hide-server-name"
